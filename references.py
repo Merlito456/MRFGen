@@ -3,7 +3,6 @@
 # MATERIAL REQUEST REFERENCES
 # Project Type : New Build
 # OLT          : MF-02
-# # of Cards   : 1 / 2
 # ==========================================================
 # Tuple format: (part_no, description, qty_req, unit, note)
 # ==========================================================
@@ -13,10 +12,10 @@ REFERENCES = {
         "MF-02": {
 
             # ==================================================
-            # 1 LT CARD (no notes)
+            # 1 LT CARD — 24 items
             # ==================================================
             1: [
-                # ---------- EQUIPMENT PARTS ----------
+                # ---------- EQUIPMENT (8) ----------
                 ("3FE76762AA", "Lightspan MF-2 shelf incl. fan unit (LMXR-A)", 1, "pc", ""),
                 ("3FE76518AA", "MF2-FAN Module", 1, "pc", ""),
                 ("3FE76559BA", "Lightspan MF-2 DC power module (LPWR-B DC)", 2, "pcs", ""),
@@ -26,7 +25,7 @@ REFERENCES = {
                 ("3FE76476AA", "LightspanMF-2 240Gbps NT with clock sync(brand: Nokia) (LMNT-A)", 2, "pcs", ""),
                 ("3FE76353AA", "Lightspan MF 16port Multi-PON Line board (LWLT-C)", 1, "pc", ""),
 
-                # ---------- LOCAL MATERIALS / ACCESSORIES ----------
+                # ---------- LOCAL (16) ----------
                 ("3FE52344FLAA", "Simplex patch cord, LC/UPC - LC/UPC 8m(brand: Nokia)", 2, "pcs", ""),
                 ("Blaine-Spiral-1/2mmx10ft", "Spiral Wrap 10mmx10ft", 1, "pc", ""),
                 ("L00HLT_VELCRO_10M", "VELCRO (HOOK & LOOP TIE) BLACK 10m/roll", 1, "pc", ""),
@@ -46,11 +45,10 @@ REFERENCES = {
             ],
 
             # ==================================================
-            # 2 LT CARDS (no notes)
-            # Dummy plate 3FE77035BA EXCLUDED
+            # 2 LT CARDS — 23 items (no dummy plate)
             # ==================================================
             2: [
-                # ---------- EQUIPMENT PARTS ----------
+                # ---------- EQUIPMENT (8) ----------
                 ("3FE76762AA", "Lightspan MF-2 shelf incl. fan unit (LMXR-A)", 1, "pc", ""),
                 ("3FE76518AA", "MF2-FAN Module", 1, "pc", ""),
                 ("3FE76559BA", "Lightspan MF-2 DC power module (LPWR-B DC)", 2, "pcs", ""),
@@ -60,7 +58,7 @@ REFERENCES = {
                 ("3FE76476AA", "LightspanMF-2 240Gbps NT with clock sync(brand: Nokia) (LMNT-A)", 2, "pcs", ""),
                 ("3FE76353AA", "Lightspan MF 16port Multi-PON Line board (LWLT-C)", 2, "pcs", ""),
 
-                # ---------- LOCAL MATERIALS / ACCESSORIES ----------
+                # ---------- LOCAL (15) ----------
                 ("3FE52344FLAA", "Simplex patch cord, LC/UPC - LC/UPC 8m(brand: Nokia)", 2, "pcs", ""),
                 ("Blaine-Spiral-1/2mmx10ft", "Spiral Wrap 10mmx10ft", 1, "pc", ""),
                 ("L00HLT_VELCRO_10M", "VELCRO (HOOK & LOOP TIE) BLACK 10m/roll", 1, "pc", ""),
@@ -76,7 +74,7 @@ REFERENCES = {
                 ("3FE60713CAAA", "Simplex Patch Cord, SC/UPC - SC/APC 2m(brand: Nokia)", 32, "pcs", ""),
                 ("L00YG16MM2", "WIRE GROUNDING CABLE YELLOW/GREEN 16MM N/A", 10, "m", ""),
                 ("Blaine-8\"Tie", "Plastic Cable Tie white", 1, "pcs", ""),
-                # ⛔ 3FE77035BA (dummy plate) EXCLUDED — 1-card sites only
+                # ⛔ 3FE77035BA (dummy plate) EXCLUDED
             ],
         }
     }
