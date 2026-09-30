@@ -1,5 +1,5 @@
 import openpyxl
-from openpyxl.styles import Alignment
+from openpyxl.styles import Alignment, PatternFill, Border, Side
 from datetime import datetime
 import io
 
@@ -12,8 +12,8 @@ DESTINATION_ROW = 8
 SITE_ID_ROW = 10
 SITE_ADDRESS_ROW = 11
 
-# Merged block: rows 18..25 (equipment) + rows 27..46 (local materials)
-MERGED_ROWS = list(range(18, 26)) + list(range(27, 47))   # 8 + 20 = 28 slots
+# Merged block: rows 18..25 (equipment) + rows 27..46 (local)
+MERGED_ROWS = list(range(18, 26)) + list(range(27, 47))   # 28 slots
 
 REQUEST_BY_ROW = 48
 RECEIVER1_ROW = 47
@@ -24,13 +24,21 @@ COL_PART = "A"
 COL_DESC = "B"
 COL_QTY_REQ = "D"
 COL_UNIT = "E"
+COL_NOTE = "G"
 
-# Columns to clear before writing (avoid stale leftovers)
 CLEAR_COLS = ["A", "B", "C", "D", "E", "F", "G"]
+
+# ---------- Yellow note style ----------
+NOTE_FILL = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
+NOTE_BORDER = Border(
+    left=Side(style="thin", color="D4B106"),
+    right=Side(style="thin", color="D4B106"),
+    top=Side(style="thin", color="D4B106"),
+    bottom=Side(style="thin", color="D4B106"),
+)
 
 
 def _is_blank(value):
-    """True if value is None, empty string, or numeric 0."""
     if value is None:
         return True
     if isinstance(value, str) and value.strip() == "":
@@ -41,7 +49,6 @@ def _is_blank(value):
 
 
 def _set_cell(ws, row, col, value):
-    """Write value only if not blank; skip zeros/empties."""
     if _is_blank(value):
         return
     cell = ws[f"{col}{row}"]
@@ -49,10 +56,22 @@ def _set_cell(ws, row, col, value):
     cell.alignment = Alignment(wrap_text=True, vertical="center")
 
 
+def _set_note(ws, row, note):
+    if _is_blank(note):
+        return
+    cell = ws[f"{COL_NOTE}{row}"]
+    cell.value = note
+    cell.alignment = Alignment(wrap_text=True, vertical="center", horizontal="left")
+    cell.fill = NOTE_FILL
+    cell.border = NOTE_BORDER
+
+
 def _clear_row(ws, row):
-    """Wipe a row's cells so stale template content doesn't leak through."""
     for col in CLEAR_COLS:
-        ws[f"{col}{row}"].value = None
+        cell = ws[f"{col}{row}"]
+        cell.value = None
+        cell.fill = PatternFill(fill_type=None)
+        cell.border = Border()
 
 
 def build_mrf_name(month, day, year, request_no, site_id, site_name,
@@ -70,7 +89,7 @@ def generate_mrf(data: dict) -> bytes:
     wb = openpyxl.load_workbook(TEMPLATE_PATH)
     ws = wb[SHEET_NAME]
 
-    # ---------- 1. Clear previous data rows (kills stale content) ----------
+    # ---------- 1. Clear previous data rows ----------
     for row in MERGED_ROWS:
         _clear_row(ws, row)
 
@@ -87,7 +106,6 @@ def generate_mrf(data: dict) -> bytes:
     items = data.get("materials", [])
     write_idx = 0
     for item in items:
-        # Skip completely blank rows
         if _is_blank(item.get("part_no")) and _is_blank(item.get("description")):
             continue
         if write_idx >= len(MERGED_ROWS):
@@ -97,6 +115,7 @@ def generate_mrf(data: dict) -> bytes:
         _set_cell(ws, row, COL_DESC, item.get("description"))
         _set_cell(ws, row, COL_QTY_REQ, item.get("qty_req"))
         _set_cell(ws, row, COL_UNIT, item.get("unit"))
+        _set_note(ws, row, item.get("note"))
         write_idx += 1
 
     # ---------- 4. Signatories ----------
