@@ -13,6 +13,7 @@ REFERENCES = {
         "MF-02": {
             # ==================================================
             # 2 LT CARDS (matches sample: NOKIA-FN_07032026-001)
+            # Dummy plate (3FE77035BA) EXCLUDED — 1-card sites only
             # ==================================================
             2: [
                 # ---------- EQUIPMENT PARTS ----------
@@ -40,12 +41,12 @@ REFERENCES = {
                 ("3FE77365BAAA", "POSITIVE POWER CABLE BLACK/10M", 2, "pcs", "for power cable"),
                 ("3FE60713CAAA", "Simplex Patch Cord, SC/UPC - SC/APC 2m(brand: Nokia)", 32, "pcs", "32 for 2 LT Cards"),
                 ("L00YG16MM2", "WIRE GROUNDING CABLE YELLOW/GREEN 16MM N/A", 10, "m", ""),
-                ("3FE77035BA", "Lightspan MF LT dmmy plte (388x204x25)mm", 1, "pcs", "for sites with 1 LT card only"),
                 ("Blaine-8\"Tie", "Plastic Cable Tie white", 1, "pcs", ""),
+                # ⛔ 3FE77035BA (dummy plate) REMOVED — only for 1-LT-card sites
             ],
 
             # ==================================================
-            # 1 LT CARD (scaled down)
+            # 1 LT CARD (scaled down; dummy plate INCLUDED)
             # ==================================================
             1: [
                 ("3FE76762AA", "Lightspan MF-2 shelf incl. fan unit (LMXR-A)", 1, "pc", ""),
