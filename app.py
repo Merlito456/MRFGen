@@ -257,20 +257,24 @@ st.markdown("""
 with st.sidebar:
     st.markdown("### ⚙️ MRF Metadata")
 
-    req_date = st.date_input("📅 Date", value=date.today())
-    request_no = st.text_input("🔢 Request No.", value="001")
+    req_date = st.date_input("📅 Date", value=date.today(), key="meta_date")
+    request_no = st.text_input("🔢 Request No.", value="001", key="meta_req_no")
 
     st.markdown("---")
     st.markdown("##### 🏢 Site Details")
 
-    site_id_meta = st.text_input("Site ID", value="MIN355-LCGCDO")
-    site_name = st.text_input("Site Name", value="MF2")
-    olt_type = st.text_input("OLT Type", value="MF-02")
-    subcon = st.text_input("Subcon", value="JOHN_CARLO_RABANES")
+    site_id_meta = st.text_input("Site ID", value="MIN355-LCGCDO", key="meta_site_id")
+    site_name = st.text_input("Site Name", value="MF2", key="meta_site_name")
+    olt_type = st.text_input("OLT Type", value="MF-02", key="meta_olt_type")
+    subcon = st.text_input("Subcon", value="JOHN_CARLO_RABANES", key="meta_subcon")
 
     st.markdown("---")
-    auto_unit_enabled = st.toggle("🔮 Auto-detect units", value=True,
-                                   help="Automatically assign units based on part number & description")
+    auto_unit_enabled = st.toggle(
+        "🔮 Auto-detect units",
+        value=True,
+        help="Automatically assign units based on part number & description",
+        key="meta_auto_unit",
+    )
 
     st.markdown("---")
     st.caption("💡 **Tip:** Load a reference preset to autofill common MF-02 builds.")
@@ -295,13 +299,14 @@ with tab1:
     """, unsafe_allow_html=True)
 
     c1, c2, c3 = st.columns(3)
-    project_type = c1.selectbox("🏗 Project Type", ["New Build"])
-    olt = c2.selectbox("📡 OLT Model", ["MF-02"])
-    cards = c3.selectbox("🃏 # of Cards", [1, 2], index=1)
+    project_type = c1.selectbox("🏗 Project Type", ["New Build"], key="ref_project_type")
+    olt = c2.selectbox("📡 OLT Model", ["MF-02"], key="ref_olt")
+    cards = c3.selectbox("🃏 # of Cards", [1, 2], index=1, key="ref_cards")
 
     col_a, col_b, _ = st.columns([1, 1, 3])
     with col_a:
-        if st.button("📥 Load Reference", use_container_width=True, type="primary"):
+        if st.button("📥 Load Reference", use_container_width=True,
+                     type="primary", key="load_reference_btn"):
             ref = get_reference(project_type, olt, cards)
             st.session_state.materials = [
                 {"part_no": p, "description": d, "qty_req": q, "unit": u}
@@ -310,7 +315,8 @@ with tab1:
             st.success(f"✅ Loaded {len(ref)} part(s)")
             st.rerun()
     with col_b:
-        if st.button("🧹 Clear All", use_container_width=True):
+        if st.button("🧹 Clear All", use_container_width=True,
+                     key="clear_all_references"):
             st.session_state.materials = [
                 {"part_no": "", "description": "", "qty_req": "", "unit": ""}
             ]
@@ -371,7 +377,8 @@ with tab2:
     # ---- Action Buttons ----
     b1, b2, _, b3 = st.columns([1, 1, 3, 1])
     with b1:
-        if st.button("➕ Add Row", use_container_width=True):
+        if st.button("➕ Add Row", use_container_width=True,
+                     key="add_row_materials"):
             if len(st.session_state.materials) < max_slots:
                 st.session_state.materials.append(
                     {"part_no": "", "description": "", "qty_req": "", "unit": ""}
@@ -380,14 +387,16 @@ with tab2:
             else:
                 st.warning(f"⚠️ Maximum {max_slots} rows reached.")
     with b2:
-        if st.button("🧹 Clear All", use_container_width=True):
+        if st.button("🧹 Clear All", use_container_width=True,
+                     key="clear_all_materials"):
             st.session_state.materials = [
                 {"part_no": "", "description": "", "qty_req": "", "unit": ""}
             ]
             st.rerun()
     with b3:
         if auto_unit_enabled:
-            if st.button("🔮 Re-detect Units", use_container_width=True):
+            if st.button("🔮 Re-detect Units", use_container_width=True,
+                         key="redetect_units_btn"):
                 for it in st.session_state.materials:
                     it["unit"] = detect_unit(it.get("part_no", ""),
                                              it.get("description", ""))
@@ -461,24 +470,30 @@ with tab3:
                 unsafe_allow_html=True)
 
     h1, h2 = st.columns(2)
-    destination = h1.text_input("🎯 Destination Code", value="CAGAYAN DE ORO")
-    site_id = h2.text_input("🏷 Site ID (in sheet)", value=site_id_meta)
+    destination = h1.text_input("🎯 Destination Code", value="CAGAYAN DE ORO",
+                                key="hdr_destination")
+    site_id = h2.text_input("🏷 Site ID (in sheet)", value=site_id_meta,
+                            key="hdr_site_id")
     site_address = st.text_area(
         "📍 Site Address",
         value="Osmeña Extension Cagayan de Oro City_Barangay 22 (Pob.), "
               "Cagayan De Oro City, Misamis Oriental",
         height=80,
+        key="hdr_site_address",
     )
 
     st.markdown('<div class="section-title">✍️ Signatories</div>',
                 unsafe_allow_html=True)
 
     s1, s2, s3 = st.columns(3)
-    request_by = s1.text_input("👤 Requested By", value="JOHN CARLO RABANES")
+    request_by = s1.text_input("👤 Requested By", value="JOHN CARLO RABANES",
+                               key="sig_request_by")
     receiver1 = s2.text_input("📥 Receiver 1",
-                              value="NOKIA INHOUSE - JOHN CARLO RABANES/09669343065")
+                              value="NOKIA INHOUSE - JOHN CARLO RABANES/09669343065",
+                              key="sig_receiver1")
     receiver2 = s3.text_input("📤 Receiver 2",
-                              value="DNA SUBCON - EASTMOND MIRANDA/09543991868")
+                              value="DNA SUBCON - EASTMOND MIRANDA/09543991868",
+                              key="sig_receiver2")
 
     st.markdown("<div style='height: 1rem'></div>", unsafe_allow_html=True)
 
@@ -496,7 +511,7 @@ with tab3:
     """, unsafe_allow_html=True)
 
 # ============================================================
-# STICKY GENERATE BAR
+# GENERATE & DOWNLOAD
 # ============================================================
 st.markdown("<div style='height: 2rem'></div>", unsafe_allow_html=True)
 st.markdown('<div class="section-title">🚀 Generate & Download</div>',
@@ -505,7 +520,8 @@ st.markdown('<div class="section-title">🚀 Generate & Download</div>',
 g1, g2 = st.columns([1, 1])
 
 with g1:
-    if st.button("🚀 Generate MRF", type="primary", use_container_width=True):
+    if st.button("🚀 Generate MRF", type="primary",
+                 use_container_width=True, key="generate_mrf_btn"):
         payload = {
             "date": req_date.strftime("%Y-%m-%d"),
             "destination": destination,
@@ -538,6 +554,7 @@ with g2:
             file_name=st.session_state["_fname"],
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True,
+            key="download_mrf_btn",
         )
 
 # ============================================================
