@@ -12,7 +12,7 @@ DESTINATION_ROW = 8
 SITE_ID_ROW = 10
 SITE_ADDRESS_ROW = 11
 
-# Merged block: rows 18..46 used as ONE continuous table
+# Merged block: rows 18..25 (equipment) + rows 27..46 (local materials)
 MERGED_ROWS = list(range(18, 26)) + list(range(27, 47))   # 8 + 20 = 28 slots
 
 REQUEST_BY_ROW = 48
@@ -23,15 +23,36 @@ MRF_NAME_ROW = 56
 COL_PART = "A"
 COL_DESC = "B"
 COL_QTY_REQ = "D"
-COL_UNIT = "E"   # still shows unit (pcs, m, etc.)
+COL_UNIT = "E"
+
+# Columns to clear before writing (avoid stale leftovers)
+CLEAR_COLS = ["A", "B", "C", "D", "E", "F", "G"]
+
+
+def _is_blank(value):
+    """True if value is None, empty string, or numeric 0."""
+    if value is None:
+        return True
+    if isinstance(value, str) and value.strip() == "":
+        return True
+    if isinstance(value, (int, float)) and value == 0:
+        return True
+    return False
 
 
 def _set_cell(ws, row, col, value):
-    if value is None or value == "":
+    """Write value only if not blank; skip zeros/empties."""
+    if _is_blank(value):
         return
     cell = ws[f"{col}{row}"]
     cell.value = value
     cell.alignment = Alignment(wrap_text=True, vertical="center")
+
+
+def _clear_row(ws, row):
+    """Wipe a row's cells so stale template content doesn't leak through."""
+    for col in CLEAR_COLS:
+        ws[f"{col}{row}"].value = None
 
 
 def build_mrf_name(month, day, year, request_no, site_id, site_name,
@@ -49,7 +70,11 @@ def generate_mrf(data: dict) -> bytes:
     wb = openpyxl.load_workbook(TEMPLATE_PATH)
     ws = wb[SHEET_NAME]
 
-    # ---- Header ----
+    # ---------- 1. Clear previous data rows (kills stale content) ----------
+    for row in MERGED_ROWS:
+        _clear_row(ws, row)
+
+    # ---------- 2. Header ----------
     if data.get("date"):
         d = datetime.strptime(data["date"], "%Y-%m-%d")
         _set_cell(ws, DATE_ROW, "E", d.strftime("%B %d, %Y"))
@@ -58,23 +83,28 @@ def generate_mrf(data: dict) -> bytes:
     _set_cell(ws, SITE_ID_ROW, "E", data.get("site_id"))
     _set_cell(ws, SITE_ADDRESS_ROW, "E", data.get("site_address"))
 
-    # ---- Merged Materials (single continuous list, single QTY column) ----
+    # ---------- 3. Merged Materials ----------
     items = data.get("materials", [])
-    for i, row in enumerate(MERGED_ROWS):
-        if i >= len(items):
+    write_idx = 0
+    for item in items:
+        # Skip completely blank rows
+        if _is_blank(item.get("part_no")) and _is_blank(item.get("description")):
+            continue
+        if write_idx >= len(MERGED_ROWS):
             break
-        item = items[i]
+        row = MERGED_ROWS[write_idx]
         _set_cell(ws, row, COL_PART, item.get("part_no"))
         _set_cell(ws, row, COL_DESC, item.get("description"))
         _set_cell(ws, row, COL_QTY_REQ, item.get("qty_req"))
         _set_cell(ws, row, COL_UNIT, item.get("unit"))
+        write_idx += 1
 
-    # ---- Signatories ----
+    # ---------- 4. Signatories ----------
     _set_cell(ws, REQUEST_BY_ROW, COL_PART, data.get("request_by"))
     _set_cell(ws, RECEIVER1_ROW, "D", data.get("receiver1"))
     _set_cell(ws, RECEIVER2_ROW, "D", data.get("receiver2"))
 
-    # ---- MRF Name ----
+    # ---------- 5. MRF Name ----------
     if data.get("date"):
         d = datetime.strptime(data["date"], "%Y-%m-%d")
         mrf_name = build_mrf_name(
