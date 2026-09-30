@@ -6,6 +6,45 @@ from references import get_reference
 st.set_page_config(page_title="MRF Generator", page_icon="📦", layout="wide")
 st.title("📦 Material Request Form (MRF) Generator")
 
+# ============================================================
+# AUTO-UNIT DETECTION
+# ============================================================
+# Rules applied in order (first match wins).
+# ============================================================
+UNIT_RULES = [
+    # (keywords in description OR part_no  →  unit)
+    (["velcro", "10m/roll", "roll"], "roll"),
+    (["patch cord", "patchcord"], "pcs"),
+    (["cable shoe", "lugs", "terminal lug"], "pcs"),
+    (["grounding cable", "wire grounding"], "m"),
+    (["power cable", "positive power"], "pcs"),
+    (["plastic cable tie", "tie white"], "pcs"),
+    (["shrinkable"], "pcs"),
+    (["labeller", "label tape"], "pc"),
+    (["spiral wrap"], "pc"),
+    (["shelf", "fan module", "line board", "lmnt", "lmxr", "lwlt"], "pc"),
+    (["transceiver", "sfp", "xgspon", "pon"], "pcs"),
+    (["dummy", "dmmy", "plate"], "pcs"),
+]
+
+
+def detect_unit(part_no: str, description: str) -> str:
+    """Auto-detect unit from part number / description."""
+    haystack = f"{part_no or ''} {description or ''}".lower()
+    for keywords, unit in UNIT_RULES:
+        if any(kw in haystack for kw in keywords):
+            return unit
+    return ""  # default blank
+
+
+def auto_unit_for_item(item: dict) -> str:
+    """Use stored unit if present, else auto-detect, else blank."""
+    existing = (item.get("unit") or "").strip()
+    if existing:
+        return existing
+    return detect_unit(item.get("part_no", ""), item.get("description", ""))
+
+
 # ---------------- Sidebar: Metadata ----------------
 with st.sidebar:
     st.header("⚙️ MRF Metadata")
@@ -15,6 +54,7 @@ with st.sidebar:
     site_name = st.text_input("Site Name", value="MF2")
     olt_type = st.text_input("OLT Type", value="MF-02")
     subcon = st.text_input("Subcon", value="JOHN_CARLO_RABANES")
+    auto_unit_enabled = st.checkbox("🔮 Auto-detect unit", value=True)
 
 # ---------------- Reference Library ----------------
 st.subheader("📚 Material Request References")
@@ -25,10 +65,10 @@ cards = c3.selectbox("# of Cards", [1, 2], index=1)
 if c4.button("📥 Load Reference", use_container_width=True):
     ref = get_reference(project_type, olt, cards)
     st.session_state.materials = [
-        {"part_no": p, "description": d, "qty_req": q, "unit": ""}
-        for p, d, q in ref
+        {"part_no": p, "description": d, "qty_req": q, "unit": u}
+        for p, d, q, u in ref
     ] or [{"part_no": "", "description": "", "qty_req": "", "unit": ""}]
-    st.success(f"✅ Loaded {len(ref)} part(s)")
+    st.success(f"✅ Loaded {len(ref)} part(s) with auto-units")
     st.rerun()
 
 # ---------------- Header Info ----------------
@@ -66,7 +106,7 @@ hdr = st.columns([3, 6, 2, 2, 1])
 hdr[0].markdown("**PART NUMBER**")
 hdr[1].markdown("**DESCRIPTION**")
 hdr[2].markdown("**QTY REQ (TOTAL)**")
-hdr[3].markdown("**UNIT**")
+hdr[3].markdown("**UNIT (auto)**")
 hdr[4].markdown("**✖**")
 
 total_qty = 0
@@ -82,7 +122,7 @@ for i, item in enumerate(st.session_state.materials):
         key=f"m_ds_{i}", label_visibility="collapsed",
     )
 
-    # --- QTY: text_input so blank stays blank ---
+    # --- QTY (blank allowed) ---
     raw_qty = cols[2].text_input(
         f"q_{i}",
         value="" if item["qty_req"] in ("", 0, None) else str(item["qty_req"]),
@@ -90,30 +130,43 @@ for i, item in enumerate(st.session_state.materials):
         label_visibility="collapsed",
         placeholder="0",
     )
-    # Normalize: keep as int if numeric, else keep blank
     stripped = raw_qty.strip()
     if stripped.isdigit():
         item["qty_req"] = int(stripped)
     elif stripped == "":
         item["qty_req"] = ""
     else:
-        item["qty_req"] = stripped  # allow text just in case
+        item["qty_req"] = stripped
+
+    # --- UNIT: auto-detect unless user overrides ---
+    detected = auto_unit_for_item(item) if auto_unit_enabled else (item.get("unit") or "")
+
+    # Store last-detected for next run so the selectbox default lines up
+    if auto_unit_enabled and detected:
+        item["_auto_unit"] = detected
+
+    current_unit = item.get("unit") or detected
+    unit_index = UNITS.index(current_unit) if current_unit in UNITS else 0
 
     item["unit"] = cols[3].selectbox(
         f"u_{i}", UNITS,
-        index=UNITS.index(item["unit"]) if item["unit"] in UNITS else 0,
+        index=unit_index,
         key=f"m_u_{i}", label_visibility="collapsed",
     )
+    # If user picked "" but auto-detect found something, prefer auto
+    if auto_unit_enabled and not item["unit"]:
+        item["unit"] = detected
 
     if cols[4].button("🗑️", key=f"m_del_{i}") and len(st.session_state.materials) > 1:
         st.session_state.materials.pop(i)
         st.rerun()
 
-    # Total: only add numeric values
     if isinstance(item["qty_req"], int):
         total_qty += item["qty_req"]
 
 st.markdown(f"### 🧮 **TOTAL QUANTITY: `{total_qty}`**")
+if auto_unit_enabled:
+    st.caption("🔮 Units are auto-detected from part number / description. Override manually if needed.")
 
 # ---------------- Signatories ----------------
 st.subheader("3️⃣ Signatories")
