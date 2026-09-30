@@ -27,7 +27,7 @@ if c4.button("📥 Load Reference", use_container_width=True):
     st.session_state.materials = [
         {"part_no": p, "description": d, "qty_req": q, "unit": ""}
         for p, d, q in ref
-    ] or [{"part_no": "", "description": "", "qty_req": 0, "unit": ""}]
+    ] or [{"part_no": "", "description": "", "qty_req": "", "unit": ""}]
     st.success(f"✅ Loaded {len(ref)} part(s)")
     st.rerun()
 
@@ -47,14 +47,16 @@ site_address = st.text_area(
 st.subheader("2️⃣ Materials (Equipment + Local — single combined list, max 28)")
 
 if "materials" not in st.session_state:
-    st.session_state.materials = [{"part_no": "", "description": "", "qty_req": 0, "unit": ""}]
+    st.session_state.materials = [{"part_no": "", "description": "", "qty_req": "", "unit": ""}]
 
 b1, b2, _ = st.columns([1, 1, 6])
 if b1.button("➕ Add Row"):
     if len(st.session_state.materials) < 28:
-        st.session_state.materials.append({"part_no": "", "description": "", "qty_req": 0, "unit": ""})
+        st.session_state.materials.append(
+            {"part_no": "", "description": "", "qty_req": "", "unit": ""}
+        )
 if b2.button("🧹 Clear All"):
-    st.session_state.materials = [{"part_no": "", "description": "", "qty_req": 0, "unit": ""}]
+    st.session_state.materials = [{"part_no": "", "description": "", "qty_req": "", "unit": ""}]
     st.rerun()
 
 UNITS = ["", "pcs", "pc", "m", "ft", "box", "roll", "set"]
@@ -70,19 +72,46 @@ hdr[4].markdown("**✖**")
 total_qty = 0
 for i, item in enumerate(st.session_state.materials):
     cols = st.columns([3, 6, 2, 2, 1])
-    item["part_no"] = cols[0].text_input(f"pn_{i}", item["part_no"],
-                                          key=f"m_pn_{i}", label_visibility="collapsed")
-    item["description"] = cols[1].text_input(f"ds_{i}", item["description"],
-                                              key=f"m_ds_{i}", label_visibility="collapsed")
-    item["qty_req"] = cols[2].number_input(f"q_{i}", 0, value=int(item["qty_req"]),
-                                            key=f"m_q_{i}", label_visibility="collapsed")
-    item["unit"] = cols[3].selectbox(f"u_{i}", UNITS,
-                                      index=UNITS.index(item["unit"]) if item["unit"] in UNITS else 0,
-                                      key=f"m_u_{i}", label_visibility="collapsed")
+
+    item["part_no"] = cols[0].text_input(
+        f"pn_{i}", item["part_no"],
+        key=f"m_pn_{i}", label_visibility="collapsed",
+    )
+    item["description"] = cols[1].text_input(
+        f"ds_{i}", item["description"],
+        key=f"m_ds_{i}", label_visibility="collapsed",
+    )
+
+    # --- QTY: text_input so blank stays blank ---
+    raw_qty = cols[2].text_input(
+        f"q_{i}",
+        value="" if item["qty_req"] in ("", 0, None) else str(item["qty_req"]),
+        key=f"m_q_{i}",
+        label_visibility="collapsed",
+        placeholder="0",
+    )
+    # Normalize: keep as int if numeric, else keep blank
+    stripped = raw_qty.strip()
+    if stripped.isdigit():
+        item["qty_req"] = int(stripped)
+    elif stripped == "":
+        item["qty_req"] = ""
+    else:
+        item["qty_req"] = stripped  # allow text just in case
+
+    item["unit"] = cols[3].selectbox(
+        f"u_{i}", UNITS,
+        index=UNITS.index(item["unit"]) if item["unit"] in UNITS else 0,
+        key=f"m_u_{i}", label_visibility="collapsed",
+    )
+
     if cols[4].button("🗑️", key=f"m_del_{i}") and len(st.session_state.materials) > 1:
         st.session_state.materials.pop(i)
         st.rerun()
-    total_qty += int(item["qty_req"])
+
+    # Total: only add numeric values
+    if isinstance(item["qty_req"], int):
+        total_qty += item["qty_req"]
 
 st.markdown(f"### 🧮 **TOTAL QUANTITY: `{total_qty}`**")
 
@@ -109,7 +138,7 @@ if st.button("🚀 Generate MRF", type="primary", use_container_width=True):
         "destination": destination,
         "site_id": site_id,
         "site_address": site_address,
-        "materials": st.session_state.materials,   # ⬅ single merged list
+        "materials": st.session_state.materials,
         "request_by": request_by,
         "receiver1": receiver1,
         "receiver2": receiver2,
