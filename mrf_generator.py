@@ -12,8 +12,8 @@ DESTINATION_ROW = 8
 SITE_ID_ROW = 10
 SITE_ADDRESS_ROW = 11
 
-EQUIP_ROWS = range(18, 26)      # 18..25
-LOCAL_ROWS = range(27, 47)      # 27..46
+# Merged block: rows 18..46 used as ONE continuous table
+MERGED_ROWS = list(range(18, 26)) + list(range(27, 47))   # 8 + 20 = 28 slots
 
 REQUEST_BY_ROW = 48
 RECEIVER1_ROW = 47
@@ -23,7 +23,7 @@ MRF_NAME_ROW = 56
 COL_PART = "A"
 COL_DESC = "B"
 COL_QTY_REQ = "D"
-COL_QTY_ISSUED = "E"
+COL_UNIT = "E"   # still shows unit (pcs, m, etc.)
 
 
 def _set_cell(ws, row, col, value):
@@ -36,9 +36,7 @@ def _set_cell(ws, row, col, value):
 
 def build_mrf_name(month, day, year, request_no, site_id, site_name,
                    olt_type, subcon, project_type=None):
-    """
-    Format: NOKIA-FN_MONTHDAYYEAR-REQUESTNO_SITEID_SITENAME_OLTTYPE_SUBCON
-    """
+    """Format: NOKIA-FN_MONTHDAYYEAR-REQUESTNO_SITEID_SITENAME_OLTTYPE_SUBCON"""
     date_part = f"{month:02d}{day:02d}{year}"
     parts = ["NOKIA-FN", f"{date_part}-{request_no}", site_id, site_name,
              olt_type, subcon]
@@ -60,24 +58,16 @@ def generate_mrf(data: dict) -> bytes:
     _set_cell(ws, SITE_ID_ROW, "E", data.get("site_id"))
     _set_cell(ws, SITE_ADDRESS_ROW, "E", data.get("site_address"))
 
-    # ---- Equipment parts ----
-    for i, row in enumerate(EQUIP_ROWS):
-        items = data.get("equipment", [])
-        if i < len(items):
-            item = items[i]
-            _set_cell(ws, row, COL_PART, item.get("part_no"))
-            _set_cell(ws, row, COL_DESC, item.get("description"))
-            _set_cell(ws, row, COL_QTY_REQ, item.get("qty_req"))
-
-    # ---- Local materials ----
-    for i, row in enumerate(LOCAL_ROWS):
-        items = data.get("local_materials", [])
-        if i < len(items):
-            item = items[i]
-            _set_cell(ws, row, COL_PART, item.get("part_no"))
-            _set_cell(ws, row, COL_DESC, item.get("description"))
-            _set_cell(ws, row, COL_QTY_REQ, item.get("qty_req"))
-            _set_cell(ws, row, COL_QTY_ISSUED, item.get("unit"))
+    # ---- Merged Materials (single continuous list, single QTY column) ----
+    items = data.get("materials", [])
+    for i, row in enumerate(MERGED_ROWS):
+        if i >= len(items):
+            break
+        item = items[i]
+        _set_cell(ws, row, COL_PART, item.get("part_no"))
+        _set_cell(ws, row, COL_DESC, item.get("description"))
+        _set_cell(ws, row, COL_QTY_REQ, item.get("qty_req"))
+        _set_cell(ws, row, COL_UNIT, item.get("unit"))
 
     # ---- Signatories ----
     _set_cell(ws, REQUEST_BY_ROW, COL_PART, data.get("request_by"))
