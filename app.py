@@ -1,7 +1,7 @@
 import streamlit as st
 from datetime import date
 from mrf_generator import generate_mrf, build_mrf_name
-from references import get_equipment, get_local_materials
+from references import get_reference
 
 st.set_page_config(page_title="MRF Generator", page_icon="📦", layout="wide")
 st.title("📦 Material Request Form (MRF) Generator")
@@ -18,32 +18,24 @@ with st.sidebar:
 
 # ---------------- Reference Library ----------------
 st.subheader("📚 Material Request References")
-ref_c1, ref_c2, ref_c3 = st.columns(3)
-project_type = ref_c1.selectbox("Project Type", ["New Build"])
-olt = ref_c2.selectbox("OLT", ["MF-02"])
-cards = ref_c3.selectbox("# of Cards", [1, 2], index=1)
-
-if st.button("📥 Load Reference Materials", type="secondary"):
-    eq = get_equipment(project_type, olt, cards)
-    lm = get_local_materials(project_type, olt, cards)
-
-    st.session_state.equipment = [
-        {"part_no": p, "description": d, "qty_req": q} for p, d, q in eq
-    ] or [{"part_no": "", "description": "", "qty_req": 0}]
-
-    st.session_state.local = [
-        {"part_no": p, "description": d, "qty_req": q, "unit": u}
-        for p, d, q, u in lm
-    ] or [{"part_no": "", "description": "", "qty_req": 0, "unit": "pcs"}]
-
-    st.success(f"✅ Loaded {len(eq)} equipment + {len(lm)} local material(s)")
+c1, c2, c3, c4 = st.columns([2, 2, 2, 2])
+project_type = c1.selectbox("Project Type", ["New Build"])
+olt = c2.selectbox("OLT", ["MF-02"])
+cards = c3.selectbox("# of Cards", [1, 2], index=1)
+if c4.button("📥 Load Reference", use_container_width=True):
+    ref = get_reference(project_type, olt, cards)
+    st.session_state.materials = [
+        {"part_no": p, "description": d, "qty_req": q, "unit": ""}
+        for p, d, q in ref
+    ] or [{"part_no": "", "description": "", "qty_req": 0, "unit": ""}]
+    st.success(f"✅ Loaded {len(ref)} part(s)")
     st.rerun()
 
 # ---------------- Header Info ----------------
 st.subheader("1️⃣ Header Information")
-c1, c2 = st.columns(2)
-destination = c1.text_input("Destination Code", value="CAGAYAN DE ORO")
-site_id = c2.text_input("Site ID (in sheet)", value=site_id_meta)
+h1, h2 = st.columns(2)
+destination = h1.text_input("Destination Code", value="CAGAYAN DE ORO")
+site_id = h2.text_input("Site ID (in sheet)", value=site_id_meta)
 site_address = st.text_area(
     "Site Address",
     value="Osmeña Extension Cagayan de Oro City_Barangay 22 (Pob.), "
@@ -51,48 +43,55 @@ site_address = st.text_area(
     height=80,
 )
 
-# ---------------- Equipment ----------------
-st.subheader("2️⃣ Equipment Parts (max 8)")
-if "equipment" not in st.session_state:
-    st.session_state.equipment = [{"part_no": "", "description": "", "qty_req": 0}]
+# ---------------- MERGED Materials Table ----------------
+st.subheader("2️⃣ Materials (Equipment + Local — single combined list, max 28)")
 
-if st.button("➕ Add Equipment Row"):
-    if len(st.session_state.equipment) < 8:
-        st.session_state.equipment.append({"part_no": "", "description": "", "qty_req": 0})
+if "materials" not in st.session_state:
+    st.session_state.materials = [{"part_no": "", "description": "", "qty_req": 0, "unit": ""}]
 
-for i, item in enumerate(st.session_state.equipment):
-    cols = st.columns([3, 5, 2, 1])
-    item["part_no"] = cols[0].text_input(f"PN #{i+1}", item["part_no"], key=f"eq_pn_{i}")
-    item["description"] = cols[1].text_input(f"Desc #{i+1}", item["description"], key=f"eq_ds_{i}")
-    item["qty_req"] = cols[2].number_input(f"Qty #{i+1}", 0, value=int(item["qty_req"]), key=f"eq_qty_{i}")
-    if cols[3].button("🗑️", key=f"eq_del_{i}") and len(st.session_state.equipment) > 1:
-        st.session_state.equipment.pop(i); st.rerun()
+b1, b2, _ = st.columns([1, 1, 6])
+if b1.button("➕ Add Row"):
+    if len(st.session_state.materials) < 28:
+        st.session_state.materials.append({"part_no": "", "description": "", "qty_req": 0, "unit": ""})
+if b2.button("🧹 Clear All"):
+    st.session_state.materials = [{"part_no": "", "description": "", "qty_req": 0, "unit": ""}]
+    st.rerun()
 
-# ---------------- Local Materials ----------------
-st.subheader("3️⃣ Local Materials / Accessories (max 20)")
-if "local" not in st.session_state:
-    st.session_state.local = [{"part_no": "", "description": "", "qty_req": 0, "unit": "pcs"}]
+UNITS = ["", "pcs", "pc", "m", "ft", "box", "roll", "set"]
 
-if st.button("➕ Add Local Row"):
-    if len(st.session_state.local) < 20:
-        st.session_state.local.append({"part_no": "", "description": "", "qty_req": 0, "unit": "pcs"})
+# Header row
+hdr = st.columns([3, 6, 2, 2, 1])
+hdr[0].markdown("**PART NUMBER**")
+hdr[1].markdown("**DESCRIPTION**")
+hdr[2].markdown("**QTY REQ (TOTAL)**")
+hdr[3].markdown("**UNIT**")
+hdr[4].markdown("**✖**")
 
-UNITS = ["pcs", "pc", "m", "ft", "box", "roll", "set"]
-for i, item in enumerate(st.session_state.local):
-    cols = st.columns([3, 5, 2, 2, 1])
-    item["part_no"] = cols[0].text_input(f"PN L#{i+1}", item["part_no"], key=f"lm_pn_{i}")
-    item["description"] = cols[1].text_input(f"Desc L#{i+1}", item["description"], key=f"lm_ds_{i}")
-    item["qty_req"] = cols[2].number_input(f"Qty L#{i+1}", 0, value=int(item["qty_req"]), key=f"lm_qty_{i}")
-    item["unit"] = cols[3].selectbox(f"Unit L#{i+1}", UNITS, index=UNITS.index(item["unit"]), key=f"lm_u_{i}")
-    if cols[4].button("🗑️", key=f"lm_del_{i}") and len(st.session_state.local) > 1:
-        st.session_state.local.pop(i); st.rerun()
+total_qty = 0
+for i, item in enumerate(st.session_state.materials):
+    cols = st.columns([3, 6, 2, 2, 1])
+    item["part_no"] = cols[0].text_input(f"pn_{i}", item["part_no"],
+                                          key=f"m_pn_{i}", label_visibility="collapsed")
+    item["description"] = cols[1].text_input(f"ds_{i}", item["description"],
+                                              key=f"m_ds_{i}", label_visibility="collapsed")
+    item["qty_req"] = cols[2].number_input(f"q_{i}", 0, value=int(item["qty_req"]),
+                                            key=f"m_q_{i}", label_visibility="collapsed")
+    item["unit"] = cols[3].selectbox(f"u_{i}", UNITS,
+                                      index=UNITS.index(item["unit"]) if item["unit"] in UNITS else 0,
+                                      key=f"m_u_{i}", label_visibility="collapsed")
+    if cols[4].button("🗑️", key=f"m_del_{i}") and len(st.session_state.materials) > 1:
+        st.session_state.materials.pop(i)
+        st.rerun()
+    total_qty += int(item["qty_req"])
+
+st.markdown(f"### 🧮 **TOTAL QUANTITY: `{total_qty}`**")
 
 # ---------------- Signatories ----------------
-st.subheader("4️⃣ Signatories")
-c1, c2, c3 = st.columns(3)
-request_by = c1.text_input("Requested By", value="JOHN CARLO RABANES")
-receiver1 = c2.text_input("Receiver 1", value="NOKIA INHOUSE - JOHN CARLO RABANES/09669343065")
-receiver2 = c3.text_input("Receiver 2", value="DNA SUBCON - EASTMOND MIRANDA/09543991868")
+st.subheader("3️⃣ Signatories")
+s1, s2, s3 = st.columns(3)
+request_by = s1.text_input("Requested By", value="JOHN CARLO RABANES")
+receiver1 = s2.text_input("Receiver 1", value="NOKIA INHOUSE - JOHN CARLO RABANES/09669343065")
+receiver2 = s3.text_input("Receiver 2", value="DNA SUBCON - EASTMOND MIRANDA/09543991868")
 
 # ---------------- Preview ----------------
 preview = build_mrf_name(
@@ -110,8 +109,7 @@ if st.button("🚀 Generate MRF", type="primary", use_container_width=True):
         "destination": destination,
         "site_id": site_id,
         "site_address": site_address,
-        "equipment": st.session_state.equipment,
-        "local_materials": st.session_state.local,
+        "materials": st.session_state.materials,   # ⬅ single merged list
         "request_by": request_by,
         "receiver1": receiver1,
         "receiver2": receiver2,
@@ -123,7 +121,7 @@ if st.button("🚀 Generate MRF", type="primary", use_container_width=True):
     }
     try:
         xlsx = generate_mrf(payload)
-        st.success("✅ MRF generated!")
+        st.success(f"✅ MRF generated! Total Quantity: **{total_qty}**")
         st.download_button(
             "📥 Download MRF (.xlsx)",
             data=xlsx,
